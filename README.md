@@ -7,10 +7,10 @@
 ##  Features
 
 -  Accepts multiple PDF resumes at once
--  Uses `sentence-transformers` (MiniLM) for semantic similarity — not just keyword matching
+-  Uses `sentence-transformers` (MiniLM) for semantic similarity, not just keyword matching
 -  CLI mode for fast terminal usage
 -  Web UI for drag-and-drop screening
--  Scores resumes 0–100% with a ranked output
+-  Scores range from 0–100% with a ranked output
 
 ---
 
