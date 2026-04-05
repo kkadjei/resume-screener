@@ -1,0 +1,4 @@
+We are looking for a Python developer with experience in machine learning and data science.
+The ideal candidate has worked with libraries such as scikit-learn, TensorFlow, or PyTorch.
+Experience with REST APIs, Flask, and deploying models to production is a plus.
+Strong communication skills and the ability to work in an agile team are required.

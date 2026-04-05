@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ResumeRank — AI Resume Screener</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0b0c10; --surface: #13151c; --border: #1e2130;
+      --accent: #00e5ff; --accent2: #7b61ff; --text: #e8eaf0;
+      --muted: #5a5f78; --success: #00e5a0; --danger: #ff4d6d; --radius: 12px;
+    }
+    body { font-family: 'Syne', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    body::before {
+      content: ''; position: fixed; inset: 0;
+      background-image: linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px; pointer-events: none; z-index: 0;
+    }
+    .container { max-width: 900px; margin: 0 auto; padding: 60px 24px; position: relative; z-index: 1; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(0,229,255,0.08); border: 1px solid rgba(0,229,255,0.2);
+      color: var(--accent); font-family: 'DM Mono', monospace; font-size: 11px;
+      letter-spacing: 0.12em; text-transform: uppercase; padding: 5px 12px;
+      border-radius: 100px; margin-bottom: 20px;
+    }
+    .badge::before { content: ''; width: 6px; height: 6px; background: var(--accent); border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    h1 { font-size: clamp(36px, 6vw, 58px); font-weight: 800; line-height: 1.05; letter-spacing: -0.02em; margin-bottom: 14px; }
+    h1 span { background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .subtitle { color: var(--muted); font-size: 16px; max-width: 480px; line-height: 1.6; margin-bottom: 56px; }
+    .form-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 36px; margin-bottom: 40px; }
+    .field { margin-bottom: 28px; }
+    label { display: block; font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+    textarea {
+      width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+      color: var(--text); font-family: 'DM Mono', monospace; font-size: 13px; line-height: 1.7;
+      padding: 16px; resize: vertical; min-height: 160px; outline: none; transition: border-color 0.2s;
+    }
+    textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,229,255,0.08); }
+    .drop-zone {
+      border: 2px dashed var(--border); border-radius: var(--radius); padding: 40px 24px;
+      text-align: center; cursor: pointer; transition: all 0.2s; position: relative;
+    }
+    .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: rgba(0,229,255,0.04); }
+    .drop-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    .drop-icon { font-size: 32px; margin-bottom: 12px; }
+    .drop-label { font-size: 15px; color: var(--muted); }
+    .drop-label strong { color: var(--accent); }
+    .file-list { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+    .file-chip { background: rgba(123,97,255,0.1); border: 1px solid rgba(123,97,255,0.25); color: #a89bff; font-family: 'DM Mono', monospace; font-size: 11px; padding: 4px 10px; border-radius: 6px; }
+    .btn { display: inline-flex; align-items: center; gap: 10px; padding: 14px 32px; border-radius: var(--radius); font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; border: none; transition: all 0.2s; }
+    .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #000; width: 100%; justify-content: center; }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,229,255,0.25); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .loading { display: none; text-align: center; padding: 60px 0; color: var(--muted); }
+    .loading.visible { display: block; }
+    .spinner { width: 40px; height: 40px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 20px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #results { display: none; }
+    #results.visible { display: block; }
+    .results-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .results-title { font-size: 20px; font-weight: 700; }
+    .results-count { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted); }
+    .result-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 16px; transition: all 0.2s; animation: fadeUp 0.4s ease both; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    .result-card:hover { border-color: var(--accent2); transform: translateY(-2px); }
+    .result-card.rank-1 { border-color: rgba(0,229,255,0.4); }
+    .result-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+    .result-rank { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); text-transform: uppercase; }
+    .result-filename { font-size: 16px; font-weight: 700; margin-top: 4px; }
+    .score-badge { flex-shrink: 0; font-family: 'DM Mono', monospace; font-size: 22px; font-weight: 500; padding: 8px 16px; border-radius: 8px; }
+    .score-high { background: rgba(0,229,160,0.1); color: var(--success); }
+    .score-mid { background: rgba(0,229,255,0.1); color: var(--accent); }
+    .score-low { background: rgba(255,77,109,0.1); color: var(--danger); }
+    .score-bar-bg { height: 4px; background: var(--border); border-radius: 4px; margin-bottom: 14px; overflow: hidden; }
+    .score-bar-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--accent2), var(--accent)); transition: width 1s cubic-bezier(0.4,0,0.2,1); }
+    .preview-text { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted); line-height: 1.7; background: var(--bg); padding: 12px; border-radius: 8px; border: 1px solid var(--border); }
+    .error-msg { background: rgba(255,77,109,0.08); border: 1px solid rgba(255,77,109,0.25); color: var(--danger); padding: 16px; border-radius: var(--radius); font-size: 14px; display: none; }
+    .error-msg.visible { display: block; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="badge">AI-Powered</div>
+    <h1>Resume<br/><span>Screener</span></h1>
+    <p class="subtitle">Upload PDFs, paste a job description, and let semantic AI rank your candidates by relevance.</p>
+  </header>
+  <div class="form-card">
+    <div class="field">
+      <label>Job Description</label>
+      <textarea id="jobDesc" placeholder="Paste the full job description here..."></textarea>
+    </div>
+    <div class="field">
+      <label>Resume PDFs</label>
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept=".pdf" multiple />
+        <div class="drop-icon">📄</div>
+        <div class="drop-label"><strong>Click or drag</strong> PDF resumes here</div>
+        <div class="file-list" id="fileList"></div>
+      </div>
+    </div>
+    <div class="error-msg" id="errorMsg"></div>
+    <button class="btn btn-primary" id="submitBtn" onclick="runScreener()">⚡ Screen Resumes</button>
+  </div>
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p>Analysing resumes with semantic embeddings...</p>
+  </div>
+  <div id="results">
+    <div class="results-header">
+      <div class="results-title">Results</div>
+      <div class="results-count" id="resultsCount"></div>
+    </div>
+    <div id="resultsList"></div>
+  </div>
+</div>
+<script>
+  const fileInput = document.getElementById('fileInput');
+  const fileList = document.getElementById('fileList');
+  const dropZone = document.getElementById('dropZone');
+  let selectedFiles = [];
+
+  fileInput.addEventListener('change', () => {
+    selectedFiles = Array.from(fileInput.files);
+    renderFiles();
+  });
+
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('dragover');
+    selectedFiles = Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.pdf'));
+    renderFiles();
+  });
+
+  function renderFiles() {
+    fileList.innerHTML = selectedFiles.map(f => `<span class="file-chip">📄 ${f.name}</span>`).join('');
+  }
+
+  async function runScreener() {
+    const jobDesc = document.getElementById('jobDesc').value.trim();
+    const errorMsg = document.getElementById('errorMsg');
+    errorMsg.classList.remove('visible');
+    if (!jobDesc) { showError('Please enter a job description.'); return; }
+    if (selectedFiles.length === 0) { showError('Please upload at least one PDF resume.'); return; }
+    document.getElementById('submitBtn').disabled = true;
+    document.getElementById('loading').classList.add('visible');
+    document.getElementById('results').classList.remove('visible');
+    const formData = new FormData();
+    formData.append('job_description', jobDesc);
+    selectedFiles.forEach(f => formData.append('resumes', f));
+    try {
+      const res = await fetch('/api/screen', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (data.error) { showError(data.error); return; }
+      renderResults(data.results);
+    } catch (err) {
+      showError('Something went wrong. Is the Flask server running?');
+    } finally {
+      document.getElementById('loading').classList.remove('visible');
+      document.getElementById('submitBtn').disabled = false;
+    }
+  }
+
+  function renderResults(results) {
+    const container = document.getElementById('resultsList');
+    document.getElementById('resultsCount').textContent = `${results.length} resume${results.length !== 1 ? 's' : ''} ranked`;
+    container.innerHTML = results.map((r, i) => {
+      const scoreClass = r.score >= 70 ? 'score-high' : r.score >= 45 ? 'score-mid' : 'score-low';
+      return `
+        <div class="result-card ${i === 0 ? 'rank-1' : ''}" style="animation-delay:${i * 0.07}s">
+          <div class="result-top">
+            <div>
+              <div class="result-rank">#${i + 1} match</div>
+              <div class="result-filename">${r.filename}</div>
+            </div>
+            <div class="score-badge ${scoreClass}">${r.score}%</div>
+          </div>
+          <div class="score-bar-bg"><div class="score-bar-fill" style="width:${r.score}%"></div></div>
+          <div class="preview-text">${r.preview}</div>
+        </div>`;
+    }).join('');
+    document.getElementById('results').classList.add('visible');
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('errorMsg');
+    el.textContent = msg; el.classList.add('visible');
+    document.getElementById('loading').classList.remove('visible');
+    document.getElementById('submitBtn').disabled = false;
+  }
+</script>
+</body>
+</html>
