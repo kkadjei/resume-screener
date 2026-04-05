@@ -4,3 +4,4 @@ flask>=3.0.0
 click>=8.1.0
 torch>=2.0.0 --index-url https://download.pytorch.org/whl/cpu
 werkzeug>=3.0.0
+gunicorn>=21.2.0
