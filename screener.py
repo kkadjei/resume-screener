@@ -1,4 +1,3 @@
-
 import os
 import json
 from pathlib import Path
@@ -13,7 +12,9 @@ _model: Optional[SentenceTransformer] = None
 def get_model() -> SentenceTransformer:
     global _model
     if _model is None:
+        print("Loading model...")
         _model = SentenceTransformer(MODEL_NAME)
+        print("Model loaded!")
     return _model
 
 
